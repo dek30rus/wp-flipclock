@@ -1,30 +1,48 @@
 <?php
 
+function get_timezone_offset($timezone="UTC"){
+ if($timezone=="UTC"){
+	return 0;
+ } else {
+	$dateTimeOfZone = new DateTimeZone($timezone);
+	$dateTimeInZone = new DateTime("now", $dateTimeOfZone);
+	$dateTimeOfUTC = new DateTimeZone("UTC");
+	$dateTimeInUTC = new DateTime("now", $dateTimeOfUTC);
+	return 1000*($dateTimeOfUTC->getOffset($dateTimeInUTC)-$dateTimeOfZone->getOffset($dateTimeInZone));	
+ }
+}
+
 /** FUNCTION FOR DISPLAYING THE CLOCK **/
-function wp_flipclock_display_clock($name, $countdown = "", $datestring = "", $clockface = "hours")
+function wp_flipclock_display_clock($name, $countdown = "", $datestring = "", $clockface = "hours", $lang="english", $timezone="UTC", $seconds=1)
 {
+
+
+
 	$clock_string = "";
-	$clock_string .= '<div class="'.$name.'"></div>';
+	$clock_string .= '<div id="ecountdown" class="'.$name.'"></div>';
 
 	$clock_js_string = "";
 	$clock_js_string .= '<script type="text/javascript">
-			var clock;';
+
+	function parseDateUTC(input) {var reg = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/; var parts = reg.exec(input); return parts ? (new Date(Date.UTC(parts[1], parts[2] -1, parts[3], parts[4], parts[5],parts[6]))) : null}
+	var clock;';
 
 
 	if ($datestring && $countdown) {
 
-		$phptime = strtotime($datestring);
-		$clock_js_string .= 'var currentDate'.$name.' = new Date();';
-		$clock_js_string .= 'var futureDate'.$name.'  = new Date('.$phptime.' * 1000);';
+		$timeOffset = get_timezone_offset($timezone);
 
-		$clock_js_string .= 'var diff'.$name.' = futureDate'.$name.'.getTime() / 1000 - currentDate'.$name.'.getTime() / 1000;';
+		$clock_js_string .= "var currentDate = new Date().getTime() + new Date().getTimezoneOffset()*60000 - $timeOffset;";
+		$clock_js_string .= "var futureDate  = 1*parseDateUTC('$datestring') + ".$timeOffset.";";
+
+		$clock_js_string .= 'var diff = futureDate / 1000 - currentDate / 1000;';
 
 	} elseif ($datestring && !$countdown) {
 
-		$phptime = strtotime($datestring);
-		$clock_js_string .= 'var currentDate'.$name.' = new Date();';
-		$clock_js_string .= 'var pastDate'.$name.'  = new Date('.$phptime.' * 1000);';
-		$clock_js_string .= 'var diff'.$name.' = currentDate'.$name.'.getTime() / 1000 - pastDate'.$name.'.getTime() / 1000;';
+		$timeOffset = get_timezone_offset($timezone);
+		$clock_js_string .= "var currentDate = new Date().getTime() + new Date().getTimezoneOffset()*60000 - $timeOffset;";
+		$clock_js_string .= "var pastDate  = 1*parseDateUTC('$datestring') + ".$timeOffset.";";
+		$clock_js_string .= 'var diff = currentDate / 1000 - pastDate / 1000;';
 
 	}
 			
@@ -34,10 +52,17 @@ function wp_flipclock_display_clock($name, $countdown = "", $datestring = "", $c
 		clock = jQuery('.".$name."').FlipClock(";
 
 	if ($datestring) {
-		$clock_js_string .= "diff".$name.", {";
+		$clock_js_string .= "diff, {";
 	} else {
 		$clock_js_string .= "{";
 	} 
+
+	if ($lang)
+	{
+
+		$clock_js_string .= "language: '".$lang."', ";
+
+	}
 	
 	if ($countdown)
 	{
@@ -46,12 +71,14 @@ function wp_flipclock_display_clock($name, $countdown = "", $datestring = "", $c
 
 	}
 
+
 	if ($countdown && $clockface && $clockface != "hours") {
 		$clock_js_string .= ", ";
 	}
 
 	switch ($clockface) {
 		case "days":
+			if(!$seconds) $clock_js_string .= "showSeconds: false, ";
 			$clock_js_string .= "clockFace: 'DailyCounter'";
 			break;
 		case "minutes":
@@ -83,9 +110,12 @@ function wp_flipclock_shortcode($atts)
 	      'name' => 'wpflipclock',
 	      'countdown' => '',
 	      'date' => '',
-	      'face' => 'hours'
+	      'lang' => 'english',
+	      'timezone' => 'UTC',
+	      'face' => 'hours',
+	      'seconds' => '1'
      ), $atts ) );
-    return wp_flipclock_display_clock($name, $countdown, $date, strtolower($face));
+    return wp_flipclock_display_clock($name, $countdown, $date, strtolower($face), $lang, $timezone, intval($seconds));
 }
 
 add_shortcode('flipclock','wp_flipclock_shortcode');
