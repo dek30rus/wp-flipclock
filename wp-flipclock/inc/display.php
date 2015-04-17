@@ -23,14 +23,17 @@ function wp_flipclock_display_clock($name, $countdown = "", $datestring = "", $c
 
 	$clock_js_string = "";
 	$clock_js_string .= '<script type="text/javascript">
-			var clock;';
+
+	function parseDateUTC(input) {var reg = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/; var parts = reg.exec(input); return parts ? (new Date(Date.UTC(parts[1], parts[2] -1, parts[3], parts[4], parts[5],parts[6]))) : null}
+	var clock;';
 
 
 	if ($datestring && $countdown) {
 
 		$timeOffset = get_timezone_offset($timezone);
+
 		$clock_js_string .= "var currentDate = new Date().getTime() + new Date().getTimezoneOffset()*60000 - $timeOffset;";
-		$clock_js_string .= "var futureDate  = Date.parse('$datestring');";
+		$clock_js_string .= "var futureDate  = 1*parseDateUTC('$datestring') + ".$timeOffset.";";
 
 		$clock_js_string .= 'var diff = futureDate / 1000 - currentDate / 1000;';
 
@@ -38,7 +41,7 @@ function wp_flipclock_display_clock($name, $countdown = "", $datestring = "", $c
 
 		$timeOffset = get_timezone_offset($timezone);
 		$clock_js_string .= "var currentDate = new Date().getTime() + new Date().getTimezoneOffset()*60000 - $timeOffset;";
-		$clock_js_string .= "var pastDate  = Date.parse('$datestring');";
+		$clock_js_string .= "var pastDate  = 1*parseDateUTC('$datestring') + ".$timeOffset.";";
 		$clock_js_string .= 'var diff = currentDate / 1000 - pastDate / 1000;';
 
 	}
